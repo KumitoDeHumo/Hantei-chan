@@ -75,8 +75,9 @@ uniform vec3 AddColor;
 void main()
 {
 	vec4 col = texture2D(Texture, Frag_UV.st);
+	col.rgba *= Frag_Color;
 	col.rgb += AddColor;
-	gl_FragColor = col * Frag_Color;
+	gl_FragColor = col;
 }
 )";
 
@@ -237,6 +238,7 @@ void Render::Draw()
 			rview *= invOrtho;
 
 			glDisableVertexAttribArray(2);
+			SetImageColor(layer.rgba);
 			parts->Draw(layer.spriteId, [this, &rview](glm::mat4 m){
 					SetMatrixPersp(lProjectionT, m, rview);
 				},

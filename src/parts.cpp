@@ -181,6 +181,13 @@ unsigned int* Parts::PgLoad(unsigned int* data, const unsigned int* data_end, in
 				tex.dontDelete = true;
 				data += tex.w * tex.h / 4 +0x20;
 			}
+			else if (someSize == tex.w * tex.h * 4 + 128)
+			{
+				data += 2; //skip unknown shit
+				tex.s3tc = ((unsigned char*)data) + 128;
+				tex.dontDelete = true;
+				data += tex.w * tex.h + 0x20;
+			}
 			else
 			{
 				int cSize = data[4]; //From 'DDS ' to PGED
@@ -320,6 +327,9 @@ unsigned int* Parts::PrLoad(unsigned int* data, const unsigned int* data_end, in
 		else if (!memcmp(buf, "PRAL", 4)) { //Opt
 			unsigned char* cdata = (unsigned char*)data;
 			pr.additive = *cdata;
+			if (pr.additive == 2) {
+				pr.additive = 1;
+			}
 			++cdata;
 			data = (unsigned int*)cdata;
 		}
@@ -765,10 +775,6 @@ void Parts::Draw(int pattern,
 
 			float newColor[4];
 			memcpy(newColor, color, sizeof(float) * 4);
-			newColor[0] *= part.bgra[2] / 255.f;
-			newColor[1] *= part.bgra[1] / 255.f;
-			newColor[2] *= part.bgra[0] / 255.f;
-			newColor[3] *= part.bgra[3] / 255.f;
 			if (cutout.colorSlot != 0) {
 				unsigned int color = cg->getColorFromPal(cutout.colorSlot);
 				if (color) {
@@ -779,6 +785,10 @@ void Parts::Draw(int pattern,
 				}
 
 			}
+			newColor[0] *= part.bgra[2] / 255.f;
+			newColor[1] *= part.bgra[1] / 255.f;
+			newColor[2] *= part.bgra[0] / 255.f;
+			newColor[3] *= part.bgra[3] / 255.f;
 			glVertexAttrib4fv(2, newColor);
 			setAddColor(part.addColor[2] / 255.f, part.addColor[1] / 255.f, part.addColor[0] / 255.f);
 			DrawPart(part.ppId);
