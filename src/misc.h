@@ -4,6 +4,7 @@
 #include <string>
 
 extern bool screenShot;
+extern bool outputAnimElement;
 
 static inline int to_pow2(int a) {
 	int v = 1;

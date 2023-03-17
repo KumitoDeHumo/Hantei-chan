@@ -44,6 +44,7 @@ void MainPane::Draw()
 				{
 					currState.pattern = n;
 					currState.frame = 0;
+					currState.nextFrame = 0;
 				}
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)

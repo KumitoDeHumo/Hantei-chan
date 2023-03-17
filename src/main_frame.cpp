@@ -85,7 +85,7 @@ void MainFrame::Draw()
 void MainFrame::DrawBack()
 {
 	render.filter = smoothRender;
-	if(screenShot)
+	if(screenShot || outputAnimElement)
 		glClearColor(0, 0, 0, 0.f);
 	else
 		glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.f);
@@ -97,7 +97,7 @@ void MainFrame::DrawBack()
 	if(parts.loaded)
 		render.UpdateProj(clientRect.x, clientRect.y);
 
-	if(screenShot)
+	if(screenShot || outputAnimElement)
 	{
 		size_t size = clientRect.x*clientRect.y*4;
 		unsigned char* imageData = new unsigned char[size];
@@ -126,7 +126,12 @@ void MainFrame::DrawBack()
 
 		std::stringstream ss;
 		ss.flags(std::ios_base::right);
-		ss <<"pat-"<<std::setfill('0') << std::setw(3) << currState.pattern << "_fr-"<<currState.frame<<".png";
+		if (screenShot) {
+			ss << "pat-" << std::setfill('0') << std::setw(3) << currState.pattern << "_fr-" << currState.frame << ".png";
+		}
+		else {
+			ss << "pat-" << std::setfill('0') << std::setw(3) << currState.pattern << "_fr-" << currState.frame << "_" << duration << ".png";
+		}
 
 		std::filesystem::path outName(dirLocation);
 		outName /= ss.str();
@@ -222,14 +227,58 @@ void MainFrame::RenderUpdate()
 			duration = 0;
 			loopCounter = 0;
 		}
-		if(currState.animating)
+		if(currState.animating || outputAnimElement)
 		{
 			currState.animeSeq = currState.pattern;
-			if(duration < 0)
+			auto GetNextFrame = [&,this](bool decreaseLoopCounter) {
+				auto seq = framedata.get_sequence(currState.pattern);
+				if (seq && !seq->frames.empty())
+				{
+					auto& af = seq->frames[currState.frame].AF;
+					if (af.aniType == 1) {
+						if (currState.frame + 1 >= seq->frames.size()) {
+							return 0;
+						}
+						else {
+							return currState.frame + 1;
+						}
+					}
+					else if (af.aniType == 2)
+					{
+						if ((af.aniFlag & 0x2) && loopCounter < 0)
+						{
+							if (af.aniFlag & 0x8) {
+								return currState.frame + af.loopEnd;
+							}
+							else {
+								return af.loopEnd;
+							}
+						}
+						else
+						{
+							if (af.aniFlag & 0x2 && decreaseLoopCounter) {
+								--loopCounter;
+							}
+							if (af.aniFlag & 0x4) {
+								return currState.frame + af.jump;
+							}
+							else {
+								return af.jump;
+							}
+						}
+					}
+					else {
+						return 0;
+					}
+				}
+				return currState.frame;
+			};
+			if(duration >= seq->frames[currState.frame].AF.duration)
 			{
 				auto seq = framedata.get_sequence(currState.pattern);
 				if(seq && !seq->frames.empty())
 				{
+					/*
 					auto &af = seq->frames[currState.frame].AF;
 					if(af.aniType == 1)
 						currState.frame += 1;
@@ -256,15 +305,35 @@ void MainFrame::RenderUpdate()
 						currState.frame = 0;
 					if(currState.frame >= seq->frames.size())
 						currState.frame = 0;
-					
-					duration = seq->frames[currState.frame].AF.duration;
+					*/
+					currState.frame = GetNextFrame(true);
+					duration = 0;
+					currState.nextFrame = GetNextFrame(false);
 				}
+				outputAnimElement = false;
 			}
-			--duration;
+			if (seq->frames[currState.frame].AF.interpolationType == 1) {
+				interpolationFactor = 1 - float(duration) / seq->frames[currState.frame].AF.duration;
+			}
+			else {
+				interpolationFactor = 1;
+			}
+			
+			duration++;
+		}
+		else {
+			interpolationFactor = 1;
 		}
 
 		auto &frame =  seq->frames[currState.frame];
 		currState.layers = &frame.AF.layers;
+		if (interpolationFactor < 1 && seq->frames[currState.frame].AF.aniType != 0 && seq->frames[currState.frame].AF.aniType != 3) {
+			currState.nextLayers = &seq->frames[currState.nextFrame].AF.layers;
+		}
+		else {
+			currState.nextLayers = &frame.AF.layers;
+		}
+		
 		render.GenerateHitboxVertices(frame.hitboxes);
 
 
@@ -279,7 +348,7 @@ void MainFrame::RenderUpdate()
 		
 		render.DontDraw();
 	}
-	render.SwitchImage(currState.layers);
+	render.SwitchImage(currState.layers, currState.nextLayers,interpolationFactor);
 }
 
 void MainFrame::AdvancePattern(int dir)
@@ -290,6 +359,7 @@ void MainFrame::AdvancePattern(int dir)
 	else if(currState.pattern >= framedata.get_sequence_count())
 		currState.pattern = framedata.get_sequence_count()-1;
 	currState.frame = 0;
+	currState.nextFrame = 0;
 }
 
 void MainFrame::AdvanceFrame(int dir)
@@ -362,7 +432,11 @@ bool MainFrame::HandleKeys(uint64_t vkey)
 			ChangeOffset(-1,0);
 			return true;
 		case VK_RIGHT:
-			ChangeOffset(1,0);
+			ChangeOffset(1, 0);
+			return true;
+		case 'P':
+			outputAnimElement = true;
+			duration = 0;
 			return true;
 		}
 	}
@@ -388,8 +462,10 @@ bool MainFrame::HandleKeys(uint64_t vkey)
 		boxPane.AdvanceBox(+1);
 		return true;
 	case 'P':
-		screenShot = true;
-		return true;
+		if (!outputAnimElement) {
+			screenShot = true;
+			return true;
+		}
 	case 'F':
 		drawImgui = !drawImgui;
 		return true;
@@ -470,7 +546,7 @@ void MainFrame::Menu(unsigned int errorPopupId)
 					{
 						currentFilePath.clear();
 						mainPane.RegenerateNames();
-						render.SwitchImage(nullptr);
+						render.SwitchImage(nullptr, nullptr,1);
 					}
 				}
 			}
@@ -538,7 +614,7 @@ void MainFrame::Menu(unsigned int errorPopupId)
 					{
 						ImGui::OpenPopup(errorPopupId);	
 					}
-					render.SwitchImage(nullptr);
+					render.SwitchImage(nullptr, nullptr,1);
 				}
 			}
 
@@ -551,7 +627,7 @@ void MainFrame::Menu(unsigned int errorPopupId)
 					{
 						ImGui::OpenPopup(errorPopupId);	
 					}
-					render.SwitchImage(nullptr);
+					render.SwitchImage(nullptr, nullptr, 1);
 				}
 			}
 
@@ -564,7 +640,7 @@ void MainFrame::Menu(unsigned int errorPopupId)
 					{
 						ImGui::OpenPopup(errorPopupId);	
 					}
-					render.SwitchImage(nullptr);
+					render.SwitchImage(nullptr, nullptr, 1);
 				}
 			}
 
@@ -596,7 +672,7 @@ void MainFrame::Menu(unsigned int errorPopupId)
 				else if(curPalette < 0)
 					curPalette = 0;
 				if(cg.changePaletteNumber(curPalette))
-					render.SwitchImage(nullptr);
+					render.SwitchImage(nullptr, nullptr, 1);
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Zoom level"))
@@ -613,7 +689,7 @@ void MainFrame::Menu(unsigned int errorPopupId)
 				if (ImGui::Checkbox("Bilinear", &smoothRender))
 				{
 					render.filter = smoothRender;
-					render.SwitchImage(nullptr);
+					render.SwitchImage(nullptr, nullptr, 1);
 				}
 				ImGui::EndMenu();
 			}

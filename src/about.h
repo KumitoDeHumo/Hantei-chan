@@ -57,6 +57,7 @@ public:
 				"X", "Next box",
 				"Z", "Previous box",
 				"P", "Output current view as image",
+				"Ctrl + P", "Output current animated element image",
 				"L", "Toggle axis",
 				"H", "Toggle hitboxes",
 				"F", "Hide user interface",

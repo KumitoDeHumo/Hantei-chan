@@ -42,7 +42,7 @@ add_executable(${EXE} WIN32
 )
 
 target_include_directories(${EXE} PRIVATE ".")
-target_compile_definitions(${EXE} PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN HA6GUIVERSION="${CMAKE_PROJECT_VERSION}")
+target_compile_definitions(${EXE} PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN HA6GUIVERSION="${CMAKE_PROJECT_VERSION}_Custom_20230317")
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(${EXE} PRIVATE tinyalloc imgui glad OpenGL::GL glm winmm)

@@ -185,15 +185,20 @@ void Render::Draw()
 	glDisable(GL_DEPTH_TEST);
 	for(int i = 0; i < size; ++i)
 	{
-		auto &layer = layers[i];
+		auto& layer = layers[i];
+		auto& nextLayer = nextLayers[i];
 		auto &texture = textures[i];
 		if(!texture.isApplied && layer.usePat == 0)
 			continue;
 
-		glm::mat4 view = glm::scale(glm::mat4(1.f), glm::vec3(layer.scale[0], layer.scale[1], 1.f));
-		view = glm::rotate(view, layer.rotation[2]*tau, glm::vec3(0.0, 0.f, 1.f));
-		view = glm::rotate(view, layer.rotation[1]*tau, glm::vec3(0.0, 1.f, 0.f));
-		view = glm::rotate(view, layer.rotation[0]*tau, glm::vec3(1.0, 0.f, 0.f));
+		auto mix = [this](float a, float b) {
+			return a * interpolationFactor + b * (1 - interpolationFactor);
+		};
+
+		glm::mat4 view = glm::scale(glm::mat4(1.f), glm::vec3(mix(layer.scale[0], nextLayer.scale[0]), mix(layer.scale[1], nextLayer.scale[1]), 1.f));
+		view = glm::rotate(view, mix(layer.rotation[2],nextLayer.rotation[2])*tau, glm::vec3(0.0, 0.f, 1.f));
+		view = glm::rotate(view, mix(layer.rotation[1], nextLayer.rotation[1]) *tau, glm::vec3(0.0, 1.f, 0.f));
+		view = glm::rotate(view, mix(layer.rotation[0], nextLayer.rotation[0]) *tau, glm::vec3(1.0, 0.f, 0.f));
 		
 
 		sTextured.Use();
@@ -239,7 +244,7 @@ void Render::Draw()
 
 			glDisableVertexAttribArray(2);
 			SetImageColor(layer.rgba);
-			parts->Draw(layer.spriteId, [this, &rview](glm::mat4 m){
+			parts->Draw(layer.spriteId, nextLayers[i].spriteId, interpolationFactor, [this, &rview](glm::mat4 m){
 					SetMatrixPersp(lProjectionT, m, rview);
 				},
 				[this](float r, float g, float b){
@@ -260,7 +265,7 @@ void Render::Draw()
 	if(drawBoxes)
 	{
 		vGeometry.Bind();
-		if(screenShot){
+		if(screenShot || outputAnimElement){
 			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE);
 		}
 		else{
@@ -311,7 +316,7 @@ void Render::UpdateProj(float w, float h)
 	perspective = glm::translate(perspective, glm::vec3(0.f, 0.f, -dist*f));
 }
 
-void Render::SwitchImage(std::vector<Layer> *layers_)
+void Render::SwitchImage(std::vector<Layer> *layers_, std::vector<Layer>* nextLayers_, float interpolationFactor_)
 {	
 	if(!layers_)
 	{
@@ -334,6 +339,8 @@ void Render::SwitchImage(std::vector<Layer> *layers_)
 		identical = false;
 	
 	layers = *layers_;
+	nextLayers = *nextLayers_;
+	interpolationFactor = interpolationFactor_;
 	if(!identical)
 	{
 		auto curSize = layers.size();

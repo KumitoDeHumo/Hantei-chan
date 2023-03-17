@@ -7,7 +7,9 @@ struct FrameState
 {
 	int pattern = 0;
 	int frame = 0;
-	std::vector<Layer> *layers = nullptr;
+	int nextFrame = 0;
+	std::vector<Layer>* layers = nullptr;
+	std::vector<Layer>* nextLayers = nullptr;
 	bool animating = 0;
 	int animeSeq = 0;
 	int selectedLayer = 0;

@@ -39,6 +39,8 @@ private:
 	Shader sTextured;
 	std::vector<Texture> textures;
 	std::vector<Layer> layers;
+	std::vector<Layer> nextLayers;
+	float interpolationFactor;
 	float colorRgba[4];
 
 	void AdjustImageQuad(int x, int y, int w, int h);
@@ -65,7 +67,7 @@ public:
 	void UpdateProj(float w, float h);
 
 	void GenerateHitboxVertices(const BoxList &hitboxes);
-	void SwitchImage(std::vector<Layer> *layers);
+	void SwitchImage(std::vector<Layer>* layers, std::vector<Layer>* nextLayers, float interpolationFactor);
 	void DontDraw();
 	void SetImageColor(float *rgbaArr);
 	void SetScale(float scale);

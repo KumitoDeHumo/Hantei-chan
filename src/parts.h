@@ -56,6 +56,7 @@ public:
 	};
 
 	struct PartProperty {
+		int propId;
 		float priority;
 		float rotation[3];
 		float x;
@@ -96,7 +97,7 @@ public:
 	bool Load(const char* name);
 
 	PartGfx* GetTexture(unsigned int n);
-	void Draw(int pattern, std::function<void(glm::mat4)> setMatrix,
+	void Draw(int pattern, int nextPattern, float interpolationFactor, std::function<void(glm::mat4)> setMatrix,
 		std::function<void(float, float, float)> setAddColor,
 		std::function<void(char)> setFlip, float color[4]);
 

@@ -48,6 +48,7 @@ private:
 
 	//Animation
 	int duration = 0;
+	float interpolationFactor = 0;
 	int loopCounter;
 
 	//Option
