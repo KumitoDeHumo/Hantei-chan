@@ -164,6 +164,7 @@
 	6 Set movement vector
 		param1: X speed
 		param2: random added X speed
+                param4: angle (2500 = 0)
 	12 Move parent to pos?
 		param5:	1 Opponent position. 2 Child position.
 	19 Prorate (used with effect 5)
